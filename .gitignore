@@ -4,3 +4,17 @@
 *.ptx
 *.cubin
 *.fatbin
+Projects/x64/Debug/raytracer_cuda.vcxproj.FileListAbsolute.txt
+*.lastbuildstate
+*.tlog
+*.lib
+*.exe
+*.exp
+*.log
+*.pdb
+*.ilk
+*.deps
+*.ipch
+*.opendb
+*.db
+Projects/.vs/raytracer_cuda/v16/.suo

@@ -10,4 +10,9 @@
       <Filter>Sources</Filter>
     </CudaCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Sources\cutil_math.cuh">
+      <Filter>Sources</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>

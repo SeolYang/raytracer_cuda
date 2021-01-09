@@ -239,7 +239,7 @@ int main()
 
    printf("Done!\n");
 
-   // 아주 간단한 이미지 포맷인 PPM 파일에 이미지를 저장합니다
+   // 아주 간단한 이미지 포맷인 PPM을 사용하여 이미지를 저장합니다
    FILE* f = fopen("smallptcuda.ppm", "w");
    fprintf(f, "P3\n%d %d\n%d\n", width, height, 255);
    for (int i = 0; i < width * height; i++)  // 픽셀들을 돌아가며 RGB 값을 파일에 씁니다

@@ -14,7 +14,8 @@
 #define samps 1024 // 픽셀당 샘플수
 
 // __device__ : 디바이스(GPU)상에서 실행되며, 디바이스에서만 호출할 수 있습니다.
-struct Ray {
+struct Ray 
+{
    float3 orig; // ray origin
    float3 dir;  // ray direction 
    __device__ Ray(float3 o_, float3 d_) : orig(o_), dir(d_) {}

@@ -250,8 +250,6 @@ int main()
    }
 
    printf("Saved image to 'smallptcuda.ppm'\n");
-   float what = (0.5135 * M_PI);
-   printf("%f", what);
    delete[] output_h;
    //system("PAUSE");
 }

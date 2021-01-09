@@ -187,8 +187,6 @@ __global__ void render_kernel(float3* output) {
 
    // 화면의 왼쪽 코너를 가르키는 광선을 생성한후
    // 여기에 cx와 cy를 증가시키며 x 그리고 y 방향에 각각 더해주어 다른 모든 광선에 대한 방향들을 계산합니다
-   // generate ray directed at lower left corner of the screen
-   // compute directions for all other rays by adding cx and cy increments in x and y direction
    Ray cam(make_float3(50, 52, 295.6), normalize(make_float3(0, -0.042612, -1))); // 하드 코딩된 첫 카메라 광선
    float3 cx = make_float3(width * .5135 / height, 0.0f, 0.0f); // 광선의 x 방향에 대한 오프셋
    float3 cy = normalize(cross(cx, cam.dir)) * .5135; // 광선이 y 방향에 대한 오프셋 (.5135는 FOV 각도 입니다; 약 30도(degree))
@@ -203,7 +201,8 @@ __global__ void render_kernel(float3* output) {
 
       // 초기 광선을 생성하고, 들어오는 radiance 값을 pixelcolor에 더해줍니다.
       r = r + radiance(Ray(cam.orig + d * 40, normalize(d)), &s1, &s2) * (1. / samps);
-   }       // Camera rays are pushed ^^^^^ forward to start in interior 
+   }       // Camera rays are pushed ^^^^^ forward to start in interior ; 카메라 광선이 내부에서 시작될 수 있도록 앞으로 밀어줍니다.
+
 
    // 픽셀의 RGB 값을 GPU에 있는 GPU에 적고, [0.0f, 1.0f] 범위 내로 자릅니다(clamp)
    output[i] = make_float3(clamp(r.x, 0.0f, 1.0f), clamp(r.y, 0.0f, 1.0f), clamp(r.z, 0.0f, 1.0f));

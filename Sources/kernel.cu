@@ -5,13 +5,14 @@
 #include <iostream>
 #include <cuda_runtime.h>
 #include <vector_types.h>
+#include <chrono>
 #include "device_launch_parameters.h"
 #include "cutil_math.cuh"// from http://www.icmc.usp.br/~castelo/CUDA/common/inc/cutil_math.h
 
 #define M_PI 3.14159265359f  // pi
-#define width 512  // 화면 너비
-#define height 384 // 화면 높이
-#define samps 1024 // 픽셀당 샘플수
+#define width 300  // 화면 너비
+#define height 300 // 화면 높이
+#define samps 4096 // 픽셀당 샘플수
 
 // __device__ : 디바이스(GPU)상에서 실행되며, 디바이스에서만 호출할 수 있습니다.
 struct Ray 
@@ -106,7 +107,7 @@ __device__ static float getrandom(unsigned int* seed0, unsigned int* seed1)
 // Rendering Equation을 풀어내는 것은 즉:
 // 나가는 radiance (한 점에서, outgoing radiance) = 방출(emitted)된 radiance + 반사된 radiance
 // 반사된 radiance는 한 점위에 있는 반구내에서 모든 방향으로 부터 들어온 radiance(incoming radiance)의 합(적분)과,
-// 재질의 반사 반사 함수(reflectance function, BRDF)와 입사각의 코사인의 곱을 구하는 것과 같습니다.
+// 재질의 반사 함수(reflectance function, BRDF<Bidirectional Reflectance Distribution Function>)와 입사각의 코사인의 곱을 구하는 것과 같습니다.
 __device__ float3 radiance(Ray& r, unsigned int* s1, unsigned int* s2) // returns ray color
 { 
    float3 accucolor = make_float3(0.0f, 0.0f, 0.0f); // 바운스 루프를 통해 반복할 때 마다 광선의 색상을 축적합니다
@@ -114,7 +115,7 @@ __device__ float3 radiance(Ray& r, unsigned int* s1, unsigned int* s2) // return
 
    // ray bounce loop (no Russian Roulette used)
    // 광선 바운스 루프 (러시안 룰렛이 사용되지 않았음)
-   for (int bounces = 0; bounces < 4; bounces++) // 최대 4번 튕길때 까지 반복 (CPU 코드에서의 재귀 호출을 대체합니다)
+   for (int bounces = 0; bounces < 50; bounces++) // 최대 4번 튕길때 까지 반복 (CPU 코드에서의 재귀 호출을 대체합니다)
    {
       float t;           // 가장 가까운 교차점 까지의 거리
       int id = 0;        // 가장 가까운 교차 물체(구)의 인덱스
@@ -135,6 +136,7 @@ __device__ float3 radiance(Ray& r, unsigned int* s1, unsigned int* s2) // return
       // 현재 구의 발광량을 축적된 색(accumulated colour)에 더합니다
       // (Rendering eqauation 합중 첫번째 항)
       accucolor += mask * obj.emi;
+      mask *= obj.col; // 오브젝트의 색상과 곱합니다 (물체가 빛 에너지를 흡수)
 
       // 씬안에 있는 모든 구체는 diffuse 재질 입니다
       // Diffuse 재질은 빛을 모든 방향으로 균등하게 반사합니다
@@ -144,7 +146,7 @@ __device__ float3 radiance(Ray& r, unsigned int* s1, unsigned int* s2) // return
 
       // 2개의 난수를 생성합니다
       float r1 = 2 * M_PI * getrandom(s1, s2);  // 방위각(azimuth)으로 사용하기 위한 단위원(반지름 = 1, 원 둘레 = 2*Pi인)에서 난수를 뽑습니다
-      float r2 = getrandom(s1, s2);             // 고도각(elevation)으로 사용하기 위한 난수를 뽑습니다
+      float r2 = getrandom(s1, s2);             // 고도(elevation)로 사용하기 위한 난수를 뽑습니다
       float r2s = sqrtf(r2);
 
       // 랜덤한 광선 방향을 계산에 사용하기 위한 교차점에서의 지역(local) 정규직교기저 uvw를 계산합니다
@@ -162,14 +164,12 @@ __device__ float3 radiance(Ray& r, unsigned int* s1, unsigned int* s2) // return
       r.orig = x + nl * 0.05f; // 자가 교차를 피하기 위해 광선의 원점을 노말 벡터 방향으로 살짝 밀어줍니다
       r.dir = d;
 
-      mask *= obj.col;     // 오브젝트의 색상과 곱합니다
       mask *= dot(d, nl);  // 입사광과 노말 벡터 사이의 각도를 사용하여 빛의 기여도에 가중치를 줍니다
       mask *= 2;           // 보정 계수(fudge factor)
    }
 
    return accucolor;
 }
-
 
 // __global__ : 디바이스(GPU)에서 실행되고, 호스트(CPU)에서만 호출 가능합니다
 // 이 커널은 모든 쿠다 스레드들에서 병렬로 실행됩니다
@@ -227,6 +227,7 @@ int main()
    dim3 grid(width / block.x, height / block.y, 1);
 
    printf("CUDA initialised.\nStart rendering...\n");
+   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
 
    // 스레드들을 디바이스에 스케쥴링하고 호스트로부터 CUDA 커널을 실행 합니다.
    render_kernel <<< grid, block >>> (output_d);
@@ -236,6 +237,9 @@ int main()
 
    // CUDA 메모리(GPU Memory) 할당을 해제합니다
    cudaFree(output_d);
+
+   std::chrono::duration<double> renderTime = std::chrono::system_clock::now() - begin;
+   std::cout << "Rendering elapsed time(sec): " << renderTime.count() << " seconds" << std::endl;
 
    printf("Done!\n");
 
